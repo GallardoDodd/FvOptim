@@ -2,8 +2,8 @@ program orbita
 implicit none
 integer, parameter :: DP = SELECTED_REAL_KIND(15,300)
 real(DP) :: xin, yin, eps, tfin, tin, velin
-real(DP) :: xj, yj
-real(DP), allocatable :: x(:), y(:), t(:), vely(:), velx(:), temp(:), rad(:)
+real(DP) :: xj, yj, err, err_max, rad_errmax
+real(DP), allocatable :: x(:), y(:), t(:), vely(:), velx(:), temp(:), rad(:), rad_euler(:)
 integer :: n, i
 !Constants
 real(DP), parameter :: G=6.67428D-11, ms=1.9891D30, mt=5.972D24
@@ -14,18 +14,18 @@ yin = 0.0D0                  ! Posición y inicial perihelio
 velin = 30290D0              ! Velocidad orbital de la tierra en el perihelio
 tin = 0.0D0                  ! Tiempo inicial
 tfin = 365.25D0 * 24.0D0 * 3600.0D0               ! Tiempo final
-n = 1000000                  ! Número de pasos
+n = 1000000                    ! Número de pasos
 eps = (tfin - tin)/n         ! Paso de integración
+err_max = 0D0                ! Error para comparar métodos
 
-ALLOCATE(x(n), y(n), vely(n), velx(n), temp(n), rad(n))
+ALLOCATE(x(n), y(n), vely(n), velx(n), temp(n), rad_euler(n))
 x(1) = xin
 y(1) = yin
 vely(1) = velin
 velx(1) = 0
-rad(1)= sqrt(x(1)**2+y(1)**2)
+rad_euler(1)= sqrt(x(1)**2+y(1)**2)
 
 
-GO TO 42
 !-----<< METODO DE EULER >>-----
 !Partimos de la aceleración obtenida de la fuerza gravitacional
 do i = 1, n-1
@@ -36,15 +36,28 @@ do i = 1, n-1
   x(i+1) = x(i) + eps*velx(i)
   y(i+1) = y(i) + eps*vely(i)
 
-  rad(i+1) = sqrt(x(i+1)**2+y(i+1)**2)
+  rad_euler(i+1) = sqrt(x(i+1)**2+y(i+1)**2)
 end do
-42 continue
+! Escribimos las posiciones de la tierra en su orbita
+open(unit=10, file="resultados/posorbita_euler.txt", status="replace")
+do i = 1,n
+  write(10, *) x(i), y(i)
+end do
+close(10)
+
+DEALLOCATE(x, y, vely, velx, temp)
+ALLOCATE(x(n), y(n), vely(n), velx(n), temp(n), rad(n))
+x(1) = xin
+y(1) = yin
+vely(1) = velin
+velx(1) = 0
+rad(1)= sqrt(x(1)**2+y(1)**2)
 
 
 !-----<< METODO RUNGE-KUTTA 4 >>-----
 do i = 1, n - 1
   call RK4(x(i), y(i), velx(i), vely(i), eps, x(i+1), y(i+1), velx(i+1), vely(i+1))
-  rad(i) = sqrt(x(i)**2+y(i)**2) !Calculamos el radio de la orbita
+  rad(i+1) = sqrt(x(i)**2+y(i)**2) !Calculamos el radio de la orbita
 end do
 
 ! Escribimos las posiciones de la tierra en su orbita
@@ -59,6 +72,19 @@ open(unit=20, file="resultados/posorbita_afelio.txt", status="replace")
 write(20, *) x(maxloc(rad)), y(maxloc(rad))
 print *, "Para la orbita de un año, el radio de afelio encontrado és", rad(maxloc(rad))
 close(20)
+
+
+
+!-----<< COMPARACIÓN DE MÉTODOS >>-----
+do i =1,n
+  err =  sqrt((rad(i) - rad_euler(i))**2)
+  if (err > err_max) then
+  err_max = err
+  rad_errmax = rad(i)
+  end if
+end do
+print *, "La máxima diferencia de radio orbital entre RK4 i Euler és de", err_max, "m."
+
 
 contains
   ! Subrutina que calcula runge-kuta 4 para un paso
