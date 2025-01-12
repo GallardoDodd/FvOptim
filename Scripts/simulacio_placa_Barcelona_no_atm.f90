@@ -1,4 +1,4 @@
-PROGRAM simulacio_placa_Barcelona
+PROGRAM simulacio_placa_Barcelona_no_atm
 IMPLICIT NONE
 INTEGER, PARAMETER :: DP = SELECTED_REAL_KIND(15,300)
 
@@ -11,13 +11,11 @@ REAL(DP), PARAMETER :: &
   G = 6.677428D-15, &                                 ! [km^2kg^(-1)s^(-1)]    Constant de gravitació universal
   R_per = 147100000.0D0, &                            ! [km]                   Distància Terra-Sol al periheli
   PI = 3.141592653589793_DP, &                        ! [NA]                   Valor de pi a doble precissió
-  n_d = 366.242D0, &                                  ! [NA]                   Nombre de dies siderals que té un any sideral
+  n_d = 366.242D0, &                                  ! [NA]                   Nombre de dies siderals que té un anys sideral
   r_sol = 6.957D5, &                                  ! [km]                   Radi solar
   sigma = 5.670373D-2, &                              ! [Wkm^(-2)K^(-4)]       Constant d'Stefan Boltzmann
-  T_ef = 5777, &                                      ! [K]                    Temperatuar efectiva del Sol
-  h_atm = 10, &                                       ! [km]                   Alçada promig atmosfera
-  R_t = 6378                                          ! [km]                   Radi de la Terra
-
+  T_ef = 5777                                         ! [K]                    Temperatuar efectiva del Sol
+ 
 INTEGER, PARAMETER :: n = 10000                       ! [NA]                   Nombre d'increments angulars
 INTEGER :: i                                          ! [NA]                   Índex
 
@@ -47,9 +45,7 @@ REAL(DP) :: &
   u_z, &
   v_x, &                                              ! [NA]                   Components vector unitari que apunta a la placa des del Sol
   v_y, &
-  v_z, &
-  AM, &
-  L_m
+  v_z
   
 REAL(DP), ALLOCATABLE :: &
   theta_list(:), &                                    ! [rad]                  Llista d'angles orbitals
@@ -61,12 +57,10 @@ REAL(DP), ALLOCATABLE :: &
   alpha_list(:), &                                    ! [rad]                  Llista de valors de la declinació
   phi_0_list(:), &                                    ! [rad]                  Llista de valors de l'angle de desfasament diürn
   delta_list(:), &                                    ! [rad]                  Llista de valors d'elevació aparent del Sol
-  I_list(:), &                                           ! []                     Llista de flux d'intensitat que arriba a la placa a temps real
-  compr(:)
+  I_list(:)                                           ! []                     Llista de flux d'intensitat que arriba a la placa a temps real
 LOGICAL :: &
   NS_like, &                                          ! [bool]                 TRUE si és N-like, FALSE si és S-like
   trop                                                ! [bool]                 TRUE si ens trobem a la zona intertropical
-
 ! -----<< MÈTODE D'EULER D'ORDRE REDUÏT >>-----
 ALLOCATE(r_list(n),theta_list(n),x_list(n),y_list(n))
 param = G*M_Sol/(R_per*l**2) - 1/R_per
@@ -91,7 +85,7 @@ DO i = 1,n-1
   y_list(i+1) = r*SIN(theta)
 END DO
 
-OPEN(unit=10, file="Coordenades_orbita.txt", status="replace")
+OPEN(unit=10, file="Coordenades_orbita_no_atm.txt", status="replace")
 DO i = 1,n
   WRITE(10, *) x_list(i), y_list(i)
 END DO
@@ -107,8 +101,8 @@ alpha_list = epsilon*SIN(theta_list - desf_e_set)
 theta_h_list = MOD(theta_list*n_d/(2*PI),2*PI)
 phi_0_list = ASIN(SIN(alpha_list)/COS(beta))
 delta_list = (PI/2 -alpha_list-beta)*SIN(theta_h_list - theta_list)
-OPEN(unit=10, file="evo_declinacio.txt", status="replace")
-OPEN(unit=20,file="elevacio_solar_anual.txt", status="replace")
+OPEN(unit=10, file="evo_declinacio_no_atm.txt", status="replace")
+OPEN(unit=20,file="elevacio_solar_anual_no_atm.txt", status="replace")
 DO i = 1,n
   WRITE(10, *) theta_list(i), alpha_list(i)
   WRITE(20, *) theta_list(i), delta_list(i)
@@ -116,7 +110,7 @@ END DO
 CLOSE(10)
 
 ! -----<< CONDICIONS I SIMULACIÓ DEL DIA REAL >>-----
-ALLOCATE(I_list(n),compr(n))
+ALLOCATE(I_list(n))
 IF (beta .GT. epsilon) THEN
   trop = .FALSE.
   NS_like = .TRUE.
@@ -139,38 +133,33 @@ DO i = 1,n
     END IF
   END IF
   S_0 = r_list(i)**(-2)*(R_per**2/(r_sol**2 * sigma * T_ef**4))**(-1)/1000000
-  L_m = (R_t + h_atm)*COS(ASIN(R_t*SIN(alpha_list(i)+beta)/(R_t+h_atm)))-R_t*COS(alpha_list(i)+beta) &
-  + R_t*(1-SIN(theta_h_list(i)-theta_list(i)))
-  AM = L_m/h_atm
   IF (NS_like) THEN
-    phi_0 = phi_0_list(i) 
+    phi_0 = phi_0_list(i)
   ELSE
-    phi_0 = -phi_0_list(i) 
+    phi_0 = -phi_0_list( i)
   END IF
   IF (delta_list(i) .GT. 0 .AND. (-phi_0 .LT. theta_h_list(i) - theta_list(i) .OR. &
    theta_h_list(i) - theta_list(i) .LT. PI + phi_0)) THEN
-    v_x = COS(delta_list(i))*COS((theta_h_list(i) - theta_list(i)))
+    v_x = COS(delta_list(i))*COS((theta_h_list(i)-theta_list(i)))
     v_y = COS(delta_list(i))*SIN((theta_h_list(i) - theta_list(i)))
     v_z = SIN(delta_list(i))
-    u_x = -COS(mu+PI)*SIN(eta - (theta_h_list (i) - theta_list(i)))
-    u_y = COS(mu+PI)*COS(eta - (theta_h_list (i) - theta_list(i)))
+    u_x = -COS(mu)*SIN(eta - (theta_h_list (i) - theta_list(i)))
+    u_y = COS(mu)*COS(eta - (theta_h_list (i) - theta_list(i)))
     u_z = SIN(eta - (theta_h_list (i) - theta_list(i)))
     I_value = S_0*(v_x*u_x + v_y*u_y + v_z*u_z)
     IF (I_value .GT. 0) THEN
-      I_list(i) = I_value*1.1*0.7**(AM**0.678)
-    ELSE  
+      I_list(i) = I_value
+    ELSE
       I_list(i) = 0.0
     END IF
-    compr(i) = 1.0
   ELSE
     I_list(i) = 0.0
-    compr(i) = 0.0
   END IF
 END DO
-OPEN(unit=10, file="intensitats_N.txt", status="replace")
+OPEN(unit=10, file="intensitats_N_no_atm.txt", status="replace")
 DO i = 1,n
-  WRITE(10, *) theta_list(i), I_list(i), compr(i)
+  WRITE(10, *) theta_list(i), I_list(i)
 END DO
 CLOSE(10)
 
-END PROGRAM simulacio_placa_Barcelona
+END PROGRAM simulacio_placa_Barcelona_no_atm
