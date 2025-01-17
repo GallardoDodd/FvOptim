@@ -91,7 +91,7 @@ DO i = 1,n-1
   y_list(i+1) = r*SIN(theta)
 END DO
 
-OPEN(unit=10, file="Coordenades_orbita.txt", status="replace")
+OPEN(unit=10, file="Dades/metode_euler/complet/Coordenades_orbita.txt", status="replace")
 DO i = 1,n
   WRITE(10, *) x_list(i), y_list(i)
 END DO
@@ -107,11 +107,11 @@ alpha_list = epsilon*SIN(theta_list - desf_e_set)
 theta_h_list = MOD(theta_list*n_d/(2*PI),2*PI)
 phi_0_list = ASIN(SIN(alpha_list)/COS(beta))
 delta_list = (PI/2 -alpha_list-beta)*SIN(theta_h_list - theta_list)
-OPEN(unit=10, file="evo_declinacio.txt", status="replace")
-OPEN(unit=20,file="elevacio_solar_anual.txt", status="replace")
+OPEN(unit=10, file="Dades/metode_euler/complet/evo_declinacio.txt", status="replace")
+OPEN(unit=20,file="Dades/metode_euler/complet/elevacio_solar_anual.txt", status="replace")
 DO i = 1,n
   WRITE(10, *) theta_list(i), alpha_list(i)
-  WRITE(20, *) theta_list(i), delta_list(i)
+  WRITE(20, *) theta_list(i), delta_list(i), phi_0_list(i)
 END DO
 CLOSE(10)
 
@@ -167,7 +167,7 @@ DO i = 1,n
     compr(i) = 0.0
   END IF
 END DO
-OPEN(unit=10, file="intensitats_N.txt", status="replace")
+OPEN(unit=10, file="Dades/metode_euler/complet/intensitats_N.txt", status="replace")
 DO i = 1,n
   WRITE(10, *) theta_list(i), I_list(i), compr(i)
 END DO
