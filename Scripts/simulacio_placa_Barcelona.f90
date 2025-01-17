@@ -97,8 +97,10 @@ DO i = 1,n
 END DO
 CLOSE(10)
 
-
 DEALLOCATE(x_list,y_list)
+
+! -------<< MÈTODE RK4 >>-------
+
 
 ! -----<< DELINACIÓ AL LLARG DE L'ANY, ANGLE HORARI, ANGLE DE DESFASAMENT DIüRN, ELEVACIÓ SOLAR APARENT >>-----
 ALLOCATE(alpha_list(n), theta_h_list(n),phi_0_list(n))
